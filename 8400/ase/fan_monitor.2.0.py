@@ -25,11 +25,11 @@ Manifest = {
 
 ParameterDefinitions = {
     'fan_name': {
-        'Name': 'Fan name to be monitored',
+        'Name': 'Fan Name',
         'Description': 'Fan name to monitor various attributes like '
                        'speed, status and rpm value of a given fan',
         'Type': 'string',
-        'Default': 'LC1-1L'
+        'Default': '1/1/1'
     }
 }
 
@@ -37,10 +37,13 @@ ParameterDefinitions = {
 class Agent(NAE):
 
     def __init__(self):
+        # extract fan subsystem name from fan name
+        subsystem = str(self.params['fan_name'])[:3].replace('/', '%2F')
+
         # analyze status of a given fan
         self.variables['fan_status'] = '0'
-        uri1 = '/rest/v1/system/subsystems/line_card/*/' \
-               'fans/{}?attributes=status'
+        uri1 = '/rest/v1/system/subsystems/fan_tray/' \
+            + subsystem + '/fans/{}?attributes=status'
         self.m1 = Monitor(uri1, 'Fan Status',
                           [self.params['fan_name']])
 
@@ -52,16 +55,20 @@ class Agent(NAE):
         self.r2.condition('{} == "ok"', [self.m1])
         self.r2.action(self.fan_status_action_normal)
 
-        self.r3 = Rule('Fan is Uninitialized')
+        self.r3 = Rule('Fan in uninitialized state')
         self.r3.condition('{} == "uninitialized"', [self.m1])
         self.r3.action(self.fan_status_action_normal)
+
+        self.r4 = Rule('Fan in empty state')
+        self.r4.condition('{} == "empty"', [self.m1])
+        self.r4.action(self.fan_status_action_normal)
 
         # analyze speed of a given fan
         self.variables['fan_fast'] = '0'
         self.variables['fan_max'] = '0'
 
-        uri2 = '/rest/v1/system/subsystems/line_card/*/' \
-               'fans/{}?attributes=speed'
+        uri2 = '/rest/v1/system/subsystems/fan_tray/' \
+            + subsystem + '/fans/{}?attributes=speed'
         self.m2 = Monitor(uri2, 'Fan Speed',
                           [self.params['fan_name']])
 
@@ -86,8 +93,8 @@ class Agent(NAE):
         self.r8.action(self.fan_speed_action_normal)
 
         # analyze rpm of a given fan
-        uri3 = '/rest/v1/system/subsystems/line_card/*/' \
-               'fans/{}?attributes=rpm'
+        uri3 = '/rest/v1/system/subsystems/fan_tray/' \
+            + subsystem + '/fans/{}?attributes=rpm'
         self.m3 = Monitor(uri3, 'Fan RPM',
                           [self.params['fan_name']])
 
@@ -150,10 +157,10 @@ class Agent(NAE):
                 self.variables['fan_fast'] = '0'
         elif self.variables['fan_max'] == '0' and \
                 self.get_alert_level() == AlertLevel.CRITICAL:
-                self.fan_set_alert(0, 'Fan {} is at maximum speed '
-                                   'and status is faulty')
-                self.variables['fan_max'] = '1'
-                self.variables['fan_fast'] = '0'
+            self.fan_set_alert(0, 'Fan {} is at maximum speed '
+                               'and status is faulty')
+            self.variables['fan_max'] = '1'
+            self.variables['fan_fast'] = '0'
 
     def fan_status_action_normal(self, event):
         if self.get_alert_level() is not None:
@@ -170,7 +177,7 @@ class Agent(NAE):
                     self.remove_alert_level()
                     self.variables['fan_status'] = '0'
                     ActionSyslog('Fan {} status back to OK. '
-                                 'Status is Ok/ Uninitialized',
+                                 'Status is Ok/ Uninitialized/ Empty',
                                  [self.params['fan_name']])
 
     def fan_speed_action_normal(self, event):
@@ -185,15 +192,15 @@ class Agent(NAE):
                     self.variables['fan_fast'] = '0'
                     self.variables['fan_max'] = '0'
             elif self.variables['fan_fast'] == '1':
-                    self.variables['fan_fast'] = '0'
-                    ActionSyslog(
-                        'Fan {} is back to normal speed, but faulty',
-                        [self.params['fan_name']])
+                self.variables['fan_fast'] = '0'
+                ActionSyslog(
+                    'Fan {} is back to normal speed, but faulty',
+                    [self.params['fan_name']])
             elif self.variables['fan_max'] == '1':
-                    self.variables['fan_max'] = '0'
-                    ActionSyslog(
-                        'Fan {} is back to normal speed, but faulty',
-                        [self.params['fan_name']])
+                self.variables['fan_max'] = '0'
+                ActionSyslog(
+                    'Fan {} is back to normal speed, but faulty',
+                    [self.params['fan_name']])
 
     def fan_set_alert(self, alertlevel, actionlog):
         if alertlevel == 1:

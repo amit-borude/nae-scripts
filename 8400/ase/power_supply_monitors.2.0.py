@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# (c) Copyright 2018 Hewlett Packard Enterprise Development LP
+# (c) Copyright 2018-2019 Hewlett Packard Enterprise Development LP
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,9 +16,9 @@
 # under the License.
 
 Manifest = {
-    'Name': 'power_supply_monitor',
+    'Name': 'power_supply_monitors',
     'Description': 'System Power Supply monitoring agent',
-    'Version': '2.0',
+    'Version': '2.1',
     'Author': 'Aruba Networks'
 }
 
@@ -26,9 +26,10 @@ Manifest = {
 class Agent(NAE):
 
     def __init__(self):
+        chassis_subsys_name = '1'
 
-        uri1 = '/rest/v1/system/subsystems/chassis/base/power_supplies/*?' \
-               'attributes=status'
+        uri1 = '/rest/v1/system/subsystems/chassis/%s/power_supplies/*?' \
+               'attributes=status' % chassis_subsys_name
         self.m1 = Monitor(uri1, 'PSU status')
         self.graph_status_transition = Graph([self.m1], title=Title(
             "PSU Status Transition"), dashboard_display=True)
@@ -91,14 +92,15 @@ class Agent(NAE):
             [self.m1])
         self.r11.action(self.status_ok_to_fault_absent)
 
-        uri2 = '/rest/v1/system/subsystems/chassis/base/power_supplies/*?' \
-               'attributes=characteristics.maximum_power'
+        uri2 = '/rest/v1/system/subsystems/chassis/%s/power_supplies/*?' \
+               'attributes=characteristics.maximum_power' % chassis_subsys_name
         self.m2 = Monitor(uri2, 'maximum (Power in Watts)')
         self.graph_max_power = Graph([self.m2], title=Title(
             "PSU Maximum Power in Watts"), dashboard_display=False)
 
-        uri3 = '/rest/v1/system/subsystems/chassis/base/power_supplies/*?' \
-               'attributes=characteristics.instantaneous_power'
+        uri3 = '/rest/v1/system/subsystems/chassis/%s/power_supplies/*?' \
+               'attributes=characteristics.instantaneous_power' \
+               % chassis_subsys_name
         self.m3 = Monitor(uri3, 'instantaneous (Power in Watts)')
         self.graph_instantaneous = Graph([self.m3], title=Title(
             "PSU Instantaneous Power in Watts"), dashboard_display=False)

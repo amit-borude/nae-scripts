@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# (c) Copyright 2017-2018 Hewlett Packard Enterprise Development LP
+# (c) Copyright 2017-2019 Hewlett Packard Enterprise Development LP
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ import math
 Manifest = {
     'Name': 'system_resource_monitor',
     'Description': 'System Resource (CPU/Memory) Monitoring agent',
-    'Version': '1.1',
+    'Version': '1.2',
     'Author': 'Aruba Networks'
 }
 
@@ -109,139 +109,117 @@ ParameterDefinitions = {
 class Agent(NAE):
 
     def __init__(self):
+        chassis_subsys_name = '1'
 
-        mm_cpu_uri = '/rest/v1/system/subsystems/management_module/1%2F1?' \
-            'attributes=resource_utilization.cpu'
-
-        self.mm_cpu_mon = Monitor(
-            mm_cpu_uri, 'CPU raw (CPU/Memory utilization in %)')
-
-        short_term_time_period = str(
-            self.params['short_term_time_period'].value) + ' minutes'
-        medium_term_time_period = str(
-            self.params['medium_term_time_period'].value) + ' minutes'
-        long_term_time_period = str(
-            self.params['long_term_time_period'].value) + ' minutes'
+        uri1 = '/rest/v1/system/subsystems/system/%s?' \
+               'attributes=resource_utilization.cpu' % chassis_subsys_name
+        self.m1 = Monitor(uri1,
+                          'CPU utilization (CPU/Memory utilization in %)')
 
         self.r1 = Rule('Short-Term High CPU')
-        mm_short_term_cpu_uri = AverageOverTime(
-            mm_cpu_uri, short_term_time_period)
-        self.mm_short_term_cpu_mon = \
-            Monitor(mm_short_term_cpu_uri,
-                    'Short-Term CPU (CPU/Memory utilization in %)')
         self.r1.condition(
-            '{} > {}',
-            [self.mm_short_term_cpu_mon,
+            'avg over {} minutes {} > {}',
+            [self.params['short_term_time_period'],
+             self.m1,
              self.params['short_term_high_threshold']])
         self.r1.action(self.action_minor_cpu)
 
         self.r2 = Rule('Medium-Term High CPU')
-        mm_medium_term_cpu_uri = AverageOverTime(
-            mm_cpu_uri, medium_term_time_period)
-        self.mm_medium_term_cpu_mon = \
-            Monitor(mm_medium_term_cpu_uri,
-                    'Medium-Term CPU (CPU/Memory utilization in %)')
         self.r2.condition(
-            '{} > {}',
-            [self.mm_medium_term_cpu_mon,
+            'avg over {} minutes {} > {}',
+            [self.params['medium_term_time_period'],
+             self.m1,
              self.params['medium_term_high_threshold']])
         self.r2.action(self.action_major_cpu)
 
         self.r3 = Rule('Long-Term High CPU')
-        mm_long_term_cpu_uri = AverageOverTime(
-            mm_cpu_uri, long_term_time_period)
-        self.mm_long_term_cpu_mon = \
-            Monitor(mm_long_term_cpu_uri,
-                    'Long-Term CPU (CPU/Memory utilization in %)')
         self.r3.condition(
-            '{} > {}',
-            [self.mm_long_term_cpu_mon,
+            'avg over {} minutes {} > {}',
+            [self.params['long_term_time_period'],
+             self.m1,
              self.params['long_term_high_threshold']])
         self.r3.action(self.action_critical_cpu)
 
         self.r4 = Rule('Short-Term Normal CPU')
         self.r4.condition(
-            '{} < {}',
-            [self.mm_short_term_cpu_mon,
+            'avg over {} minutes {} < {}',
+            [self.params['short_term_time_period'],
+             self.m1,
              self.params['short_term_normal_threshold']])
         self.r4.action(self.action_cpu_normal_minor)
 
         self.r5 = Rule('Medium-Term Normal CPU')
         self.r5.condition(
-            '{} < {}',
-            [self.mm_medium_term_cpu_mon,
+            'avg over {} minutes {} < {}',
+            [self.params['medium_term_time_period'],
+             self.m1,
              self.params['medium_term_normal_threshold']])
         self.r5.action(self.action_cpu_normal_major)
 
         self.r6 = Rule('Long-Term Normal CPU')
         self.r6.condition(
-            '{} < {}',
-            [self.mm_long_term_cpu_mon,
+            'avg over {} minutes {} < {}',
+            [self.params['long_term_time_period'],
+             self.m1,
              self.params['long_term_normal_threshold']])
         self.r6.action(self.action_cpu_normal_critical)
 
-        mm_mem_uri = '/rest/v1/system/subsystems/management_module/1%2F1?' \
-            'attributes=resource_utilization.memory'
-
-        self.mm_mem_mon = Monitor(
-            mm_mem_uri, 'Memory raw (CPU/Memory utilization in %)')
+        uri7 = '/rest/v1/system/subsystems/system/%s?' \
+               'attributes=resource_utilization.memory' % chassis_subsys_name
+        self.m7 = Monitor(uri7,
+                          'Memory utilization (CPU/Memory utilization in %)')
 
         self.r7 = Rule('Short-Term High Memory')
-        mm_short_term_mem_uri = AverageOverTime(
-            mm_mem_uri, short_term_time_period)
-        self.mm_short_term_mem_mon = \
-            Monitor(mm_short_term_mem_uri,
-                    'Short-Term Memory (CPU/Memory utilization in %)')
         self.r7.condition(
-            '{} > {}',
-            [self.mm_short_term_mem_mon,
+            'avg over {} minutes {} > {}',
+            [self.params['short_term_time_period'],
+             self.m7,
              self.params['short_term_high_threshold']])
         self.r7.action(self.action_minor_memory)
 
         self.r8 = Rule('Medium-Term High Memory')
-        mm_medium_term_mem_uri = AverageOverTime(
-            mm_mem_uri, medium_term_time_period)
-        self.mm_medium_term_mem_mon = \
-            Monitor(mm_medium_term_mem_uri,
-                    'Medium-Term Memory (CPU/Memory utilization in %)')
         self.r8.condition(
-            '{} > {}',
-            [self.mm_medium_term_mem_mon,
+            'avg over {} minutes {} > {}',
+            [self.params['medium_term_time_period'],
+             self.m7,
              self.params['medium_term_high_threshold']])
         self.r8.action(self.action_major_memory)
 
         self.r9 = Rule('Long-Term High Memory')
-        mm_long_term_mem_uri = AverageOverTime(
-            mm_mem_uri, long_term_time_period)
-        self.mm_long_term_mem_mon = \
-            Monitor(mm_long_term_mem_uri,
-                    'Long-Term Memory (CPU/Memory utilization in %)')
         self.r9.condition(
-            '{} > {}',
-            [self.mm_long_term_mem_mon,
+            'avg over {} minutes {} > {}',
+            [self.params['long_term_time_period'],
+             self.m7,
              self.params['long_term_high_threshold']])
         self.r9.action(self.action_critical_memory)
 
         self.r10 = Rule('Short-Term Normal Memory')
         self.r10.condition(
-            '{} < {}',
-            [self.mm_short_term_mem_mon,
+            'avg over {} minutes {} < {}',
+            [self.params['short_term_time_period'],
+             self.m7,
              self.params['short_term_normal_threshold']])
         self.r10.action(self.action_memory_normal_minor)
 
         self.r11 = Rule('Medium-Term Normal Memory')
         self.r11.condition(
-            '{} < {}',
-            [self.mm_medium_term_mem_mon,
+            'avg over {} minutes {} < {}',
+            [self.params['medium_term_time_period'],
+             self.m7,
              self.params['medium_term_normal_threshold']])
         self.r11.action(self.action_memory_normal_major)
 
         self.r12 = Rule('Long-Term Normal Memory')
         self.r12.condition(
-            '{} < {}',
-            [self.mm_long_term_mem_mon,
+            'avg over {} minutes {} < {}',
+            [self.params['long_term_time_period'],
+             self.m7,
              self.params['long_term_normal_threshold']])
         self.r12.action(self.action_memory_normal_critical)
+
+        uri13 = '/rest/v1/system?' \
+                'attributes=copp_statistics.total_packets_dropped'
+        self.m13 = Monitor(uri13, 'Packets dropped at CPU')
 
         self.variables['cpu_minor'] = '0'
         self.variables['cpu_major'] = '0'
@@ -293,7 +271,7 @@ class Agent(NAE):
         r_event_value = str(math.ceil(float(event_value)))
         ActionSyslog('Average CPU utilization over last {} minute(s): [' +
                      r_event_value + '], exceeded threshold: [{}]',
-                     [time_period, threshold])
+                     [time_period, threshold], severity=SYSLOG_WARNING)
         ActionCLI('top cpu')
         ActionCLI('show system resource-utilization')
         ActionCLI('show copp-policy statistics')
@@ -344,7 +322,7 @@ class Agent(NAE):
         r_event_value = str(math.floor(float(event_value)))
         ActionSyslog('Average CPU utilization over last {} minute(s): [' +
                      r_event_value + '], is below normal threshold: [{}]',
-                     [time_period, threshold])
+                     [time_period, threshold], severity=SYSLOG_WARNING)
 
     def set_agent_alert_level(self):
         cpu_status = int(self.variables['cpu_status'])
@@ -407,7 +385,7 @@ class Agent(NAE):
         r_event_value = str(math.ceil(float(event_value)))
         ActionSyslog('Average Memory utilization over last {} minute(s): [' +
                      r_event_value + '], exceeded threshold: [{}]',
-                     [time_period, threshold])
+                     [time_period, threshold], severity=SYSLOG_WARNING)
         ActionCLI('top memory')
         ActionCLI('show system resource-utilization')
         ActionCLI('show copp-policy statistics')
@@ -458,4 +436,4 @@ class Agent(NAE):
         r_event_value = str(math.floor(float(event_value)))
         ActionSyslog('Average Memory utilization over last {} minute(s): [' +
                      r_event_value + '], is below normal threshold: [{}]',
-                     [time_period, threshold])
+                     [time_period, threshold], severity=SYSLOG_WARNING)
